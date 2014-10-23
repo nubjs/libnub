@@ -47,7 +47,6 @@
         'test/helper.h',
         'test/run-tests.c',
         'test/run-tests.h',
-        'test/test-list.h',
         'test/test-timers.c',
       ],
     },
