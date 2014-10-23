@@ -21,25 +21,20 @@ void nub__work_signal_cb(uv_async_t* handle) {
 
 void nub__thread_entry_cb(void* arg) {
   nub_thread_t* thread;
-  void* item;
+  fuq_queue* queue;
 
   thread = (nub_thread_t*) arg;
+  queue = &thread->incoming_;
 
   for (;;) {
-    item = fuq_shift(&thread->incoming_);
-
-    while (NULL != item) {
-      (*thread->work_cb_)(thread, item);
-      item = fuq_shift(&thread->incoming_);
-    }
-
+    while (!fuq_empty(queue))
+      (*thread->work_cb_)(thread, fuq_shift(queue));
     if (0 < thread->disposed)
       break;
-
     uv_cond_wait(&thread->cond_wait_, &thread->cond_mutex_);
   }
 
-  ASSERT(NULL == fuq_shift(&thread->incoming_));
+  ASSERT(1 == fuq_empty(queue));
   fuq_dispose(&thread->incoming_);
 }
 

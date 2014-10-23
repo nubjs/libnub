@@ -12,14 +12,14 @@ void nub__async_dispose(uv_handle_t* handle) {
 
 
 void nub__thread_dispose(uv_async_t* handle) {
-  fuq_queue* item;
+  fuq_queue* queue;
   nub_loop_t* loop;
   nub_thread_t* thread;
 
   loop = (nub_loop_t*) handle->data;
-  item = fuq_shift(&loop->thread_dispose_queue_);
-  while (NULL != item) {
-    thread = (nub_thread_t*) item;
+  queue = &loop->thread_dispose_queue_;
+  while (!fuq_empty(queue)) {
+    thread = (nub_thread_t*) fuq_shift(queue);
 
     uv_cond_signal(&thread->cond_wait_);
     uv_thread_join(&thread->uvthread);
@@ -29,8 +29,6 @@ void nub__thread_dispose(uv_async_t* handle) {
     uv_mutex_destroy(&thread->cond_mutex_);
     --thread->nubloop->ref_;
     thread->nubloop = NULL;
-
-    item = fuq_shift(&loop->thread_dispose_queue_);
   }
 }
 
@@ -67,7 +65,7 @@ int nub_loop_run(nub_loop_t* loop, uv_run_mode mode) {
 void nub_loop_dispose(nub_loop_t* loop) {
   ASSERT(0 == loop->ref_);
   ASSERT(0 == uv_loop_alive(&loop->uvloop));
-  ASSERT(NULL == fuq_shift(&loop->thread_dispose_queue_));
+  ASSERT(1 == fuq_empty(&loop->thread_dispose_queue_));
   ASSERT(NULL != loop->thread_dispose_);
   ASSERT(0 == uv_has_ref((uv_handle_t*) loop->thread_dispose_));
 
