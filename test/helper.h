@@ -26,4 +26,8 @@
   int run_test_##name(void);                                                  \
   int run_test_##name(void)
 
+#define BENCHMARK_IMPL(name)                                                  \
+  int run_bench_##name(void);                                                 \
+  int run_bench_##name(void)
+
 #endif  /* LIBNUB_HELPER_H_ */
