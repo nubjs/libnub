@@ -1,0 +1,9 @@
+[submodule "deps/uv"]
+	path = deps/uv
+	url = https://github.com/libuv/libuv.git
+[submodule "deps/gyp"]
+	path = tools/gyp
+	url = https://github.com/svn2github/gyp.git
+[submodule "tools/gyp"]
+	path = tools/gyp
+	url = https://github.com/svn2github/gyp.git
