@@ -6,7 +6,7 @@
 #include <stdlib.h>  /* malloc, free */
 
 
-static void nub__async_dispose(uv_handle_t* handle) {
+static void nub__async_dispose_cb(uv_handle_t* handle) {
   free(handle);
 }
 
@@ -23,7 +23,7 @@ static void nub__thread_dispose(uv_async_t* handle) {
 
     uv_cond_signal(&thread->cond_wait_);
     uv_thread_join(&thread->uvthread);
-    uv_close((uv_handle_t*) thread->async_signal_, nub__async_dispose);
+    uv_close((uv_handle_t*) thread->async_signal_, nub__async_dispose_cb);
     uv_sem_destroy(&thread->blocker_sem_);
     uv_cond_destroy(&thread->cond_wait_);
     uv_mutex_destroy(&thread->cond_mutex_);
@@ -69,7 +69,7 @@ void nub_loop_dispose(nub_loop_t* loop) {
   ASSERT(NULL != loop->thread_dispose_);
   ASSERT(0 == uv_has_ref((uv_handle_t*) loop->thread_dispose_));
 
-  uv_close((uv_handle_t*) loop->thread_dispose_, nub__async_dispose);
+  uv_close((uv_handle_t*) loop->thread_dispose_, nub__async_dispose_cb);
   ASSERT(0 == uv_is_active((uv_handle_t*) loop->thread_dispose_));
 
   fuq_dispose(&loop->thread_dispose_queue_);
