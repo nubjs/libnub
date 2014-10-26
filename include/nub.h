@@ -6,7 +6,7 @@ extern "C" {
 #endif
 
 #include "uv.h"
-#include "../src/fuq.h"
+#include "fuq.h"
 
 #ifdef _WIN32
   /* Windows - set up dll import/export decorators. */

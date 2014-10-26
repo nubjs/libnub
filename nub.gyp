@@ -9,17 +9,21 @@
       'type': 'static_library',
       'dependencies': [ 'deps/uv/uv.gyp:libuv' ],
       'include_dirs': [
+        'deps/fuq',
         'include',
         'src',
       ],
       'direct_dependent_settings': {
-        'include_dirs': [ 'include' ],
+        'include_dirs': [
+          'deps/fuq',
+          'include',
+        ],
       },
       'sources': [
+        'deps/fuq/fuq.h',
         'include/nub.h',
         'src/loop.c',
         'src/thread.c',
-        'src/fuq.h',
         'src/util.h',
       ],
       'conditions': [
