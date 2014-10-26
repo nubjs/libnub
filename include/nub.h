@@ -42,7 +42,12 @@ struct nub_loop_s {
   uv_loop_t uvloop;
 
   /* private */
-  uv_sem_t blocker_sem_;
+  uv_prepare_t async_runner_;   /* Runs async queue before idling */
+  uv_mutex_t async_mutex_;      /* Threads will need to use a mutex to add
+                                   items to the queue */
+  fuq_queue async_queue_;       /* Holds entries from loop_block to run in the
+                                   prepare cb */
+  uv_sem_t blocker_sem_;        /* Block while thread operates on the eloop */
   volatile unsigned int ref_;   /* Nuber of threads attached to this loop */
   uv_async_t* thread_dispose_;  /* Used to dispose of threads */
   fuq_queue thread_dispose_queue_;

@@ -7,15 +7,15 @@
 
 
 static void nub__work_signal_cb(uv_async_t* handle) {
-  nub_thread_t* thread;
   nub_loop_t* loop;
+  nub_thread_t* thread;
 
-  thread = (nub_thread_t*) handle->data;
-  loop = thread->nubloop;
-  /* Resume the calling thread. */
-  uv_sem_post(&thread->blocker_sem_);
-  /* Block the event loop thread. */
-  uv_sem_wait(&loop->blocker_sem_);
+  loop = ((nub_thread_t*) handle->data)->nubloop;
+  while (!fuq_empty(&loop->async_queue_)) {
+    thread = (nub_thread_t*) fuq_shift(&loop->async_queue_);
+    uv_sem_post(&thread->blocker_sem_);
+    uv_sem_wait(&loop->blocker_sem_);
+  }
 }
 
 
