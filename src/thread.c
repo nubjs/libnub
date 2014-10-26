@@ -6,7 +6,7 @@
 #include <stdlib.h>  /* malloc */
 
 
-void nub__work_signal_cb(uv_async_t* handle) {
+static void nub__work_signal_cb(uv_async_t* handle) {
   nub_thread_t* thread;
   nub_loop_t* loop;
 
@@ -19,7 +19,7 @@ void nub__work_signal_cb(uv_async_t* handle) {
 }
 
 
-void nub__thread_entry_cb(void* arg) {
+static void nub__thread_entry_cb(void* arg) {
   nub_thread_t* thread;
   fuq_queue* queue;
 

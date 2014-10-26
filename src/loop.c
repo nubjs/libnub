@@ -6,12 +6,12 @@
 #include <stdlib.h>  /* malloc, free */
 
 
-void nub__async_dispose(uv_handle_t* handle) {
+static void nub__async_dispose(uv_handle_t* handle) {
   free(handle);
 }
 
 
-void nub__thread_dispose(uv_async_t* handle) {
+static void nub__thread_dispose(uv_async_t* handle) {
   fuq_queue* queue;
   nub_loop_t* loop;
   nub_thread_t* thread;
