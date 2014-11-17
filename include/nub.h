@@ -66,7 +66,6 @@ struct nub_thread_s {
   /* private */
   fuq_queue incoming_;
   uv_sem_t blocker_sem_;
-  nub_thread_work_cb work_cb_;
   /* Must be separately allocated so the handle can be closed after the thread
    * is gone. Used in an internal uv_async_send() call to signal the event loop
    * a thread has work to do. */
@@ -127,15 +126,9 @@ NUB_EXTERN void nub_loop_resume(nub_loop_t* loop);
  * The passed nub_thread_t should be previously uninitialized. Though the
  * "data" field on the nub_thread_t can be set.
  *
- * work_cb is called for every item on the processing queue. The thread will
- * not terminate when the function returns unless nub_thread_dispose() is
- * called.
- *
  * Return value is the same as uv_thread_create().
  */
-NUB_EXTERN int nub_thread_create(nub_loop_t* loop,
-                                 nub_thread_t* thread,
-                                 nub_thread_work_cb work_cb);
+NUB_EXTERN int nub_thread_create(nub_loop_t* loop, nub_thread_t* thread);
 
 
 /**
@@ -154,7 +147,9 @@ NUB_EXTERN void nub_thread_dispose(nub_thread_t* thread);
  * Push data onto the processing queue. Should only be run from the nub_loop_t
  * thread. This will signal the spawned thread there is an item on the queue.
  */
-NUB_EXTERN void nub_thread_push(nub_thread_t* thread, void* arg);
+NUB_EXTERN void nub_thread_push(nub_thread_t* thread,
+                                nub_thread_work_cb work_cb,
+                                void* arg);
 
 #ifdef __cplusplus
 }

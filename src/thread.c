@@ -22,13 +22,17 @@ static void nub__work_signal_cb(uv_async_t* handle) {
 static void nub__thread_entry_cb(void* arg) {
   nub_thread_t* thread;
   fuq_queue* queue;
+  void** item;
 
   thread = (nub_thread_t*) arg;
   queue = &thread->incoming_;
 
   for (;;) {
-    while (!fuq_empty(queue))
-      (*thread->work_cb_)(thread, fuq_shift(queue));
+    while (!fuq_empty(queue)) {
+      item = fuq_shift(queue);
+      ((nub_thread_work_cb) item[0])(thread, item[1]);
+      free(item);
+    }
     if (0 < thread->disposed)
       break;
     uv_cond_wait(&thread->cond_wait_, &thread->cond_mutex_);
@@ -39,9 +43,7 @@ static void nub__thread_entry_cb(void* arg) {
 }
 
 
-int nub_thread_create(nub_loop_t* loop,
-                      nub_thread_t* thread,
-                      nub_thread_work_cb work_cb) {
+int nub_thread_create(nub_loop_t* loop, nub_thread_t* thread) {
   uv_async_t* async_handle;
   int er;
 
@@ -66,7 +68,6 @@ int nub_thread_create(nub_loop_t* loop,
   fuq_init(&thread->incoming_);
   thread->disposed = 0;
   thread->nubloop = loop;
-  thread->work_cb_ = work_cb;
   ++loop->ref_;
 
   return uv_thread_create(&thread->uvthread, nub__thread_entry_cb, thread);
@@ -80,7 +81,14 @@ void nub_thread_dispose(nub_thread_t* thread) {
 }
 
 
-void nub_thread_push(nub_thread_t* thread, void* arg) {
-  fuq_push(&thread->incoming_, arg);
+void nub_thread_push(nub_thread_t* thread,
+                     nub_thread_work_cb work_cb,
+                     void* arg) {
+  void** args;
+  args = malloc(sizeof(*args) * 2);
+  ASSERT(NULL != args);
+  args[0] = (void*) work_cb;
+  args[1] = arg;
+  fuq_push(&thread->incoming_, args);
   uv_cond_signal(&thread->cond_wait_);
 }

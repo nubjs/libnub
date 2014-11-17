@@ -13,7 +13,7 @@ static void thread_call(nub_thread_t* thread, void* arg) {
     return nub_thread_dispose(thread);
 
   nub_loop_block(thread);
-  nub_thread_push(thread, NULL);
+  nub_thread_push(thread, thread_call, NULL);
   nub_loop_resume(thread->nubloop);
 }
 
@@ -24,11 +24,11 @@ BENCHMARK_IMPL(oscillate) {
   uint64_t time;
 
   nub_loop_init(&loop);
-  ASSERT(nub_thread_create(&loop, &thread, thread_call) == 0);
+  ASSERT(nub_thread_create(&loop, &thread) == 0);
 
   time = uv_hrtime();
 
-  nub_thread_push(&thread, NULL);
+  nub_thread_push(&thread, thread_call, NULL);
 
   ASSERT(nub_loop_run(&loop, UV_RUN_DEFAULT) == 0);
 
@@ -55,25 +55,25 @@ BENCHMARK_IMPL(oscillate2) {
   uint64_t time;
 
   nub_loop_init(&loop);
-  ASSERT(nub_thread_create(&loop, &thread0, thread_call) == 0);
-  ASSERT(nub_thread_create(&loop, &thread1, thread_call) == 0);
-  ASSERT(nub_thread_create(&loop, &thread2, thread_call) == 0);
-  ASSERT(nub_thread_create(&loop, &thread3, thread_call) == 0);
-  ASSERT(nub_thread_create(&loop, &thread4, thread_call) == 0);
-  ASSERT(nub_thread_create(&loop, &thread5, thread_call) == 0);
-  ASSERT(nub_thread_create(&loop, &thread6, thread_call) == 0);
-  ASSERT(nub_thread_create(&loop, &thread7, thread_call) == 0);
+  ASSERT(nub_thread_create(&loop, &thread0) == 0);
+  ASSERT(nub_thread_create(&loop, &thread1) == 0);
+  ASSERT(nub_thread_create(&loop, &thread2) == 0);
+  ASSERT(nub_thread_create(&loop, &thread3) == 0);
+  ASSERT(nub_thread_create(&loop, &thread4) == 0);
+  ASSERT(nub_thread_create(&loop, &thread5) == 0);
+  ASSERT(nub_thread_create(&loop, &thread6) == 0);
+  ASSERT(nub_thread_create(&loop, &thread7) == 0);
 
   time = uv_hrtime();
 
-  nub_thread_push(&thread0, NULL);
-  nub_thread_push(&thread1, NULL);
-  nub_thread_push(&thread2, NULL);
-  nub_thread_push(&thread3, NULL);
-  nub_thread_push(&thread4, NULL);
-  nub_thread_push(&thread5, NULL);
-  nub_thread_push(&thread6, NULL);
-  nub_thread_push(&thread7, NULL);
+  nub_thread_push(&thread0, thread_call, NULL);
+  nub_thread_push(&thread1, thread_call, NULL);
+  nub_thread_push(&thread2, thread_call, NULL);
+  nub_thread_push(&thread3, thread_call, NULL);
+  nub_thread_push(&thread4, thread_call, NULL);
+  nub_thread_push(&thread5, thread_call, NULL);
+  nub_thread_push(&thread6, thread_call, NULL);
+  nub_thread_push(&thread7, thread_call, NULL);
 
   ASSERT(nub_loop_run(&loop, UV_RUN_DEFAULT) == 0);
 

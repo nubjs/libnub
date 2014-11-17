@@ -56,12 +56,12 @@ TEST_IMPL(timer_huge_timeout) {
 
   nub_loop_init(&loop);
 
-  ASSERT(nub_thread_create(&loop, &timer_thread, tiny_timer_work_cb) == 0);
+  ASSERT(nub_thread_create(&loop, &timer_thread) == 0);
 
   /* Push work to the spawned thread. */
-  nub_thread_push(&timer_thread, (void*) &tiny_timer);
-  nub_thread_push(&timer_thread, (void*) &huge_timer1);
-  nub_thread_push(&timer_thread, (void*) &huge_timer2);
+  nub_thread_push(&timer_thread, tiny_timer_work_cb, (void*) &tiny_timer);
+  nub_thread_push(&timer_thread, tiny_timer_work_cb, (void*) &huge_timer1);
+  nub_thread_push(&timer_thread, tiny_timer_work_cb, (void*) &huge_timer2);
 
   ASSERT(nub_loop_run(&loop, UV_RUN_DEFAULT) == 0);
 
@@ -115,11 +115,11 @@ TEST_IMPL(timer_huge_repeat) {
 
   nub_loop_init(&loop);
 
-  ASSERT(nub_thread_create(&loop, &timer_thread, huge_repeat_work_cb) == 0);
+  ASSERT(nub_thread_create(&loop, &timer_thread) == 0);
 
   /* Push work to the spawned thread. */
-  nub_thread_push(&timer_thread, &tiny_timer);
-  nub_thread_push(&timer_thread, &huge_timer);
+  nub_thread_push(&timer_thread, huge_repeat_work_cb, &tiny_timer);
+  nub_thread_push(&timer_thread, huge_repeat_work_cb, &huge_timer);
 
   ASSERT(nub_loop_run(&loop, UV_RUN_DEFAULT) == 0);
   ASSERT(tiny_timer.cntr == 10);
@@ -164,17 +164,17 @@ TEST_IMPL(timer_run_once) {
   timer.cntr = 0;
   nub_loop_init(&loop);
 
-  ASSERT(nub_thread_create(&loop, &timer_thread, run_once_work_cb) == 0);
+  ASSERT(nub_thread_create(&loop, &timer_thread) == 0);
 
   /* Push work to the spawned thread. */
-  nub_thread_push(&timer_thread, &timer);
+  nub_thread_push(&timer_thread, run_once_work_cb, &timer);
 
   ASSERT(nub_loop_run(&loop, UV_RUN_DEFAULT) == 0);
   ASSERT(timer.cntr == 1);
 
-  ASSERT(nub_thread_create(&loop, &timer_thread, run_once_work_cb) == 0);
+  ASSERT(nub_thread_create(&loop, &timer_thread) == 0);
 
-  nub_thread_push(&timer_thread, &timer);
+  nub_thread_push(&timer_thread, run_once_work_cb, &timer);
 
   ASSERT(nub_loop_run(&loop, UV_RUN_DEFAULT) == 0);
   ASSERT(timer.cntr == 2);
@@ -197,11 +197,11 @@ TEST_IMPL(timer_run_once_multi) {
   timer1.cntr = 0;
   nub_loop_init(&loop);
 
-  ASSERT(nub_thread_create(&loop, &timer_thread0, run_once_work_cb) == 0);
-  ASSERT(nub_thread_create(&loop, &timer_thread1, run_once_work_cb) == 0);
+  ASSERT(nub_thread_create(&loop, &timer_thread0) == 0);
+  ASSERT(nub_thread_create(&loop, &timer_thread1) == 0);
 
-  nub_thread_push(&timer_thread0, &timer0);
-  nub_thread_push(&timer_thread1, &timer1);
+  nub_thread_push(&timer_thread0, run_once_work_cb, &timer0);
+  nub_thread_push(&timer_thread1, run_once_work_cb, &timer1);
 
   ASSERT(nub_loop_run(&loop, UV_RUN_DEFAULT) == 0);
   ASSERT(timer0.cntr == 1);
