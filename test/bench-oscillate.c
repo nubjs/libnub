@@ -14,7 +14,7 @@ static void thread_call(nub_thread_t* thread, void* arg) {
 
   nub_loop_block(thread);
   nub_thread_push(thread, thread_call, NULL);
-  nub_loop_resume(thread->nubloop);
+  nub_loop_resume(thread);
 }
 
 
@@ -33,7 +33,7 @@ BENCHMARK_IMPL(oscillate) {
   ASSERT(nub_loop_run(&loop, UV_RUN_DEFAULT) == 0);
 
   time = uv_hrtime() - time;
-  fprintf(stderr, "back n forths: %Lf/sec\n", ITER / (time / 1e9));
+  fprintf(stderr, "back n forths:   %Lf/sec\n", ITER / (time / 1e9));
 
   nub_loop_dispose(&loop);
   iter = ITER;

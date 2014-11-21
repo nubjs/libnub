@@ -38,7 +38,7 @@ static void tiny_timer_work_cb(nub_thread_t* thread, void* arg) {
                         work->timeout,
                         work->repeat) == 0);
 
-  nub_loop_resume(thread->nubloop);
+  nub_loop_resume(thread);
   if ((uint64_t) - 1 == work->timeout)
     nub_thread_dispose(thread);
 }
@@ -98,7 +98,7 @@ static void huge_repeat_work_cb(nub_thread_t* thread, void* arg) {
                         work->timeout,
                         work->repeat) == 0);
 
-  nub_loop_resume(thread->nubloop);
+  nub_loop_resume(thread);
   if ((uint64_t) - 1 == work->repeat)
     nub_thread_dispose(thread);
 }
@@ -151,7 +151,7 @@ static void run_once_work_cb(nub_thread_t* thread, void* arg) {
   ASSERT(uv_timer_init(&thread->nubloop->uvloop, timer_handle) == 0);
   ASSERT(uv_timer_start(timer_handle, timer_run_once_timer_cb, 0, 0) == 0);
 
-  nub_loop_resume(thread->nubloop);
+  nub_loop_resume(thread);
   nub_thread_dispose(thread);
 }
 

@@ -137,6 +137,6 @@ int nub_loop_block(nub_thread_t* thread) {
 }
 
 
-void nub_loop_resume(nub_loop_t* loop) {
-  uv_sem_post(&loop->blocker_sem_);
+void nub_loop_resume(nub_thread_t* thread) {
+  uv_sem_post(&thread->nubloop->blocker_sem_);
 }
