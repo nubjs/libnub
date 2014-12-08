@@ -3,7 +3,7 @@
     'default_configuration': 'Release',
     'configurations': {
       'Debug': {
-        'defines': [ 'NUB_DEBUG', 'DEBUG', '_DEBUG' ],
+        'defines': [ 'DEBUG' ],
         'cflags': [ '-g', '-O0', '-fwrapv' ],
       },
       'Release': {

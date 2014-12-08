@@ -17,7 +17,7 @@
      }                                                                        \
   } while (0)
 
-#if defined(NUB_DEBUG)
+#if defined(DEBUG)
 # define ASSERT(expression)  CHECK(expression)
 #else
 # define ASSERT(expression)
