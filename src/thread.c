@@ -12,7 +12,7 @@ static void nub__work_signal_cb(uv_async_t* handle) {
 
   loop = ((nub_thread_t*) handle->data)->nubloop;
   while (!fuq_empty(&loop->async_queue_)) {
-    thread = (nub_thread_t*) fuq_shift(&loop->async_queue_);
+    thread = (nub_thread_t*) fuq_dequeue(&loop->async_queue_);
     uv_sem_post(&thread->blocker_sem_);
     uv_sem_wait(&loop->blocker_sem_);
   }
@@ -21,7 +21,7 @@ static void nub__work_signal_cb(uv_async_t* handle) {
 
 static void nub__thread_entry_cb(void* arg) {
   nub_thread_t* thread;
-  fuq_queue* queue;
+  fuq_queue_t* queue;
   void** item;
 
   thread = (nub_thread_t*) arg;
@@ -29,7 +29,7 @@ static void nub__thread_entry_cb(void* arg) {
 
   for (;;) {
     while (!fuq_empty(queue)) {
-      item = fuq_shift(queue);
+      item = fuq_dequeue(queue);
       ((nub_thread_work_cb) item[0])(thread, item[1]);
       free(item);
     }
@@ -76,7 +76,7 @@ int nub_thread_create(nub_loop_t* loop, nub_thread_t* thread) {
 
 void nub_thread_dispose(nub_thread_t* thread) {
   thread->disposed = 1;
-  fuq_push(&thread->nubloop->thread_dispose_queue_, thread);
+  fuq_enqueue(&thread->nubloop->thread_dispose_queue_, thread);
   uv_async_send(thread->nubloop->thread_dispose_);
 }
 
@@ -89,6 +89,6 @@ void nub_thread_push(nub_thread_t* thread,
   ASSERT(NULL != args);
   args[0] = (void*) work_cb;
   args[1] = arg;
-  fuq_push(&thread->incoming_, args);
+  fuq_enqueue(&thread->incoming_, args);
   uv_cond_signal(&thread->cond_wait_);
 }

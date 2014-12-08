@@ -17,7 +17,7 @@ static void nub__async_prepare_cb(uv_prepare_t* handle) {
 
   loop = (nub_loop_t*) handle->data;
   while (!fuq_empty(&loop->async_queue_)) {
-    thread = (nub_thread_t*) fuq_shift(&loop->async_queue_);
+    thread = (nub_thread_t*) fuq_dequeue(&loop->async_queue_);
     uv_sem_post(&thread->blocker_sem_);
     uv_sem_wait(&loop->blocker_sem_);
   }
@@ -25,14 +25,14 @@ static void nub__async_prepare_cb(uv_prepare_t* handle) {
 
 
 static void nub__thread_dispose(uv_async_t* handle) {
-  fuq_queue* queue;
+  fuq_queue_t* queue;
   nub_loop_t* loop;
   nub_thread_t* thread;
 
   loop = (nub_loop_t*) handle->data;
   queue = &loop->thread_dispose_queue_;
   while (!fuq_empty(queue)) {
-    thread = (nub_thread_t*) fuq_shift(queue);
+    thread = (nub_thread_t*) fuq_dequeue(queue);
 
     uv_cond_signal(&thread->cond_wait_);
     uv_thread_join(&thread->uvthread);
@@ -112,7 +112,7 @@ void nub_loop_dispose(nub_loop_t* loop) {
 
 int nub_loop_block(nub_thread_t* thread) {
   uv_mutex_t* mutex;
-  fuq_queue* queue;
+  fuq_queue_t* queue;
   int er;
   int is_empty;
 
@@ -121,7 +121,7 @@ int nub_loop_block(nub_thread_t* thread) {
   is_empty = fuq_empty(queue);
 
   uv_mutex_lock(mutex);
-  fuq_push(queue, thread);
+  fuq_enqueue(queue, thread);
   uv_mutex_unlock(mutex);
 
   if (is_empty)
