@@ -6,6 +6,11 @@
 #include <stdlib.h>  /* malloc, free */
 
 
+static void nub__free_handle_cb(uv_handle_t* handle) {
+  free(handle);
+}
+
+
 static void nub__work_signal_cb(uv_async_t* handle) {
   nub_loop_t* loop;
   nub_thread_t* thread;
@@ -80,6 +85,19 @@ void nub_thread_dispose(nub_thread_t* thread, nub_thread_disposed_cb cb) {
   thread->disposed_cb_ = cb;
   fuq_enqueue(&thread->nubloop->thread_dispose_queue_, thread);
   uv_async_send(thread->nubloop->thread_dispose_);
+}
+
+
+void nub_thread_join(nub_thread_t* thread) {
+  thread->disposed = 1;
+  uv_cond_signal(&thread->cond_wait_);
+  uv_thread_join(&thread->uvthread);
+  uv_close((uv_handle_t*) thread->async_signal_, nub__free_handle_cb);
+  uv_sem_destroy(&thread->blocker_sem_);
+  uv_cond_destroy(&thread->cond_wait_);
+  uv_mutex_destroy(&thread->cond_mutex_);
+  --thread->nubloop->ref_;
+  thread->nubloop = NULL;
 }
 
 
