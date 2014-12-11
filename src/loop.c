@@ -33,16 +33,7 @@ static void nub__thread_dispose(uv_async_t* handle) {
   queue = &loop->thread_dispose_queue_;
   while (!fuq_empty(queue)) {
     thread = (nub_thread_t*) fuq_dequeue(queue);
-
-    uv_cond_signal(&thread->cond_wait_);
-    uv_thread_join(&thread->uvthread);
-    uv_close((uv_handle_t*) thread->async_signal_, nub__free_handle_cb);
-    uv_sem_destroy(&thread->blocker_sem_);
-    uv_cond_destroy(&thread->cond_wait_);
-    uv_mutex_destroy(&thread->cond_mutex_);
-    --thread->nubloop->ref_;
-    thread->nubloop = NULL;
-
+    nub_thread_join(thread);
     if (NULL != thread->disposed_cb_)
       thread->disposed_cb_(thread);
   }
