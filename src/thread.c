@@ -105,6 +105,7 @@ void nub_thread_push(nub_thread_t* thread,
                      nub_thread_work_cb work_cb,
                      void* arg) {
   void** args;
+  /* TODO: Re-architect to not need a malloc() on every call. */
   args = malloc(sizeof(*args) * 2);
   ASSERT(NULL != args);
   args[0] = (void*) work_cb;

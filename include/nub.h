@@ -119,7 +119,7 @@ NUB_EXTERN int nub_loop_block(nub_thread_t* thread);
  *
  * Should be run at the end of any event loop critical section.
  */
-NUB_EXTERN void nub_loop_resume(nub_thread_t* loop);
+NUB_EXTERN void nub_loop_resume(nub_thread_t* thread);
 
 
 /**

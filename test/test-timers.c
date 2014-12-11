@@ -193,6 +193,8 @@ TEST_IMPL(timer_run_once) {
 }
 
 
+/* TODO(trevnorris): This has some sort of race condition that occationally
+ * causes the test to hang. Fix it. */
 TEST_IMPL(timer_run_once_multi) {
   nub_loop_t loop;
   nub_thread_t timer_thread0;
