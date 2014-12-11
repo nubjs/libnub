@@ -27,6 +27,11 @@ static void tiny_timer_cb(uv_timer_t* handle) {
 }
 
 
+static void tiny_timer_thread_disposed_cb(nub_thread_t* thread) {
+  thread->data = (void*) 0xbad;
+}
+
+
 static void tiny_timer_work_cb(nub_thread_t* thread, void* arg) {
   timer_work* work = (timer_work*) arg;
 
@@ -40,7 +45,7 @@ static void tiny_timer_work_cb(nub_thread_t* thread, void* arg) {
 
   nub_loop_resume(thread);
   if ((uint64_t) - 1 == work->timeout)
-    nub_thread_dispose(thread);
+    nub_thread_dispose(thread, tiny_timer_thread_disposed_cb);
 }
 
 
@@ -57,6 +62,7 @@ TEST_IMPL(timer_huge_timeout) {
   nub_loop_init(&loop);
 
   ASSERT(nub_thread_create(&loop, &timer_thread) == 0);
+  timer_thread.data = NULL;
 
   /* Push work to the spawned thread. */
   nub_thread_push(&timer_thread, tiny_timer_work_cb, (void*) &tiny_timer);
@@ -64,6 +70,7 @@ TEST_IMPL(timer_huge_timeout) {
   nub_thread_push(&timer_thread, tiny_timer_work_cb, (void*) &huge_timer2);
 
   ASSERT(nub_loop_run(&loop, UV_RUN_DEFAULT) == 0);
+  ASSERT(0xbad == (int) timer_thread.data);
 
   /* Make valgrind happy. */
   nub_loop_dispose(&loop);
@@ -100,7 +107,7 @@ static void huge_repeat_work_cb(nub_thread_t* thread, void* arg) {
 
   nub_loop_resume(thread);
   if ((uint64_t) - 1 == work->repeat)
-    nub_thread_dispose(thread);
+    nub_thread_dispose(thread, NULL);
 }
 
 
@@ -152,7 +159,7 @@ static void run_once_work_cb(nub_thread_t* thread, void* arg) {
   ASSERT(uv_timer_start(timer_handle, timer_run_once_timer_cb, 0, 0) == 0);
 
   nub_loop_resume(thread);
-  nub_thread_dispose(thread);
+  nub_thread_dispose(thread, NULL);
 }
 
 

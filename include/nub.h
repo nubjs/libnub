@@ -32,6 +32,7 @@ typedef struct nub_thread_s nub_thread_t;
 
 typedef void (*nub_loop_cb)(void* arg);
 typedef void (*nub_thread_work_cb)(nub_thread_t* thread, void* arg);
+typedef void (*nub_thread_disposed_cb)(nub_thread_t* thread);
 
 
 struct nub_loop_s {
@@ -72,6 +73,7 @@ struct nub_thread_s {
   uv_async_t* async_signal_;
   uv_cond_t cond_wait_;
   uv_mutex_t cond_mutex_;
+  nub_thread_disposed_cb disposed_cb_;
 };
 
 
@@ -140,7 +142,8 @@ NUB_EXTERN int nub_thread_create(nub_loop_t* loop, nub_thread_t* thread);
  * Make sure not to run until all resources on the spawned thread have been
  * cleaned up.
  */
-NUB_EXTERN void nub_thread_dispose(nub_thread_t* thread);
+NUB_EXTERN void nub_thread_dispose(nub_thread_t* thread,
+                                   nub_thread_disposed_cb cb);
 
 
 /**

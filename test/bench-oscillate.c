@@ -10,7 +10,7 @@ static int iter = ITER;
 
 static void thread_call(nub_thread_t* thread, void* arg) {
   if (0 >= --iter)
-    return nub_thread_dispose(thread);
+    return nub_thread_dispose(thread, NULL);
 
   nub_loop_block(thread);
   nub_thread_push(thread, thread_call, NULL);
