@@ -23,6 +23,7 @@
         'deps/fuq/fuq.h',
         'include/nub.h',
         'src/loop.c',
+        'src/queue.c',
         'src/thread.c',
         'src/util.h',
       ],

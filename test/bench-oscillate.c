@@ -5,15 +5,16 @@
 
 #define ITER 1e6L
 
-static int iter = ITER;
+static int iter;
 
 
 static void thread_call(nub_thread_t* thread, void* arg) {
   if (0 >= --iter)
     return nub_thread_dispose(thread, NULL);
 
+  /* Block event loop long enough to queue up running this function again. */
   nub_loop_block(thread);
-  nub_thread_push(thread, thread_call, NULL);
+  nub_thread_push(thread, (nub_work_t*) arg);
   nub_loop_resume(thread);
 }
 
@@ -21,28 +22,31 @@ static void thread_call(nub_thread_t* thread, void* arg) {
 BENCHMARK_IMPL(oscillate) {
   nub_loop_t loop;
   nub_thread_t thread;
+  nub_work_t work;
   uint64_t time;
+
+  iter = ITER;
+  work = nub_work_init(thread_call, &work);
 
   nub_loop_init(&loop);
   ASSERT(nub_thread_create(&loop, &thread) == 0);
 
   time = uv_hrtime();
 
-  nub_thread_push(&thread, thread_call, NULL);
+  nub_thread_push(&thread, &work);
 
   ASSERT(nub_loop_run(&loop, UV_RUN_DEFAULT) == 0);
 
   time = uv_hrtime() - time;
-  fprintf(stderr, "back n forths:   %Lf/sec\n", ITER / (time / 1e9));
+  fprintf(stderr, "oscillate: %Lf/sec\n", ITER / (time / 1e9));
 
   nub_loop_dispose(&loop);
-  iter = ITER;
 
   return 0;
 }
 
 
-BENCHMARK_IMPL(oscillate2) {
+BENCHMARK_IMPL(oscillate_multi) {
   nub_loop_t loop;
   nub_thread_t thread0;
   nub_thread_t thread1;
@@ -52,7 +56,11 @@ BENCHMARK_IMPL(oscillate2) {
   nub_thread_t thread5;
   nub_thread_t thread6;
   nub_thread_t thread7;
+  nub_work_t work;
   uint64_t time;
+
+  iter = ITER;
+  work = nub_work_init(thread_call, &work);
 
   nub_loop_init(&loop);
   ASSERT(nub_thread_create(&loop, &thread0) == 0);
@@ -66,19 +74,19 @@ BENCHMARK_IMPL(oscillate2) {
 
   time = uv_hrtime();
 
-  nub_thread_push(&thread0, thread_call, NULL);
-  nub_thread_push(&thread1, thread_call, NULL);
-  nub_thread_push(&thread2, thread_call, NULL);
-  nub_thread_push(&thread3, thread_call, NULL);
-  nub_thread_push(&thread4, thread_call, NULL);
-  nub_thread_push(&thread5, thread_call, NULL);
-  nub_thread_push(&thread6, thread_call, NULL);
-  nub_thread_push(&thread7, thread_call, NULL);
+  nub_thread_push(&thread0, &work);
+  nub_thread_push(&thread1, &work);
+  nub_thread_push(&thread2, &work);
+  nub_thread_push(&thread3, &work);
+  nub_thread_push(&thread4, &work);
+  nub_thread_push(&thread5, &work);
+  nub_thread_push(&thread6, &work);
+  nub_thread_push(&thread7, &work);
 
   ASSERT(nub_loop_run(&loop, UV_RUN_DEFAULT) == 0);
 
   time = uv_hrtime() - time;
-  fprintf(stderr, "back n forths 2: %Lf/sec\n", ITER / (time / 1e9));
+  fprintf(stderr, "oscillate_multi: %Lf/sec\n", ITER / (time / 1e9));
 
   nub_loop_dispose(&loop);
   iter = ITER;

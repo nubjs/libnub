@@ -29,10 +29,11 @@ extern "C" {
 
 typedef struct nub_loop_s nub_loop_t;
 typedef struct nub_thread_s nub_thread_t;
+typedef struct nub_work_s nub_work_t;
 
 typedef void (*nub_loop_cb)(void* arg);
-typedef void (*nub_thread_work_cb)(nub_thread_t* thread, void* arg);
 typedef void (*nub_thread_disposed_cb)(nub_thread_t* thread);
+typedef void (*nub_work_cb)(nub_thread_t* thread, void* arg);
 
 
 struct nub_loop_s {
@@ -74,6 +75,13 @@ struct nub_thread_s {
   uv_cond_t cond_wait_;
   uv_mutex_t cond_mutex_;
   nub_thread_disposed_cb disposed_cb_;
+};
+
+
+/* Will be used bi-directionally once the event loop accepts dispatch queues. */
+struct nub_work_s {
+  void* arg;
+  nub_work_cb cb;
 };
 
 
@@ -139,6 +147,8 @@ NUB_EXTERN int nub_thread_create(nub_loop_t* loop, nub_thread_t* thread);
  * the thread so it can be joined from the nub_loop_t thread. This action is
  * transparent to the thread that's being disposed.
  *
+ * cb can be NULL.
+ *
  * Make sure not to run until all resources on the spawned thread have been
  * cleaned up.
  */
@@ -149,6 +159,10 @@ NUB_EXTERN void nub_thread_dispose(nub_thread_t* thread,
 /**
  * Join a spawned thread and wait for it to be brought down. Must be run from
  * event loop thread.
+ *
+ * Since nub_thread_create() doesn't require the user to keep the thread alive,
+ * nub_thread_join() differs from pthread_join() by simply telling the thread
+ * to finish processing all work in its queue then to bring itself down.
  */
 NUB_EXTERN void nub_thread_join(nub_thread_t* thread);
 
@@ -157,9 +171,15 @@ NUB_EXTERN void nub_thread_join(nub_thread_t* thread);
  * Push data onto the processing queue. Should only be run from the nub_loop_t
  * thread. This will signal the spawned thread there is an item on the queue.
  */
-NUB_EXTERN void nub_thread_push(nub_thread_t* thread,
-                                nub_thread_work_cb work_cb,
-                                void* arg);
+NUB_EXTERN void nub_thread_push(nub_thread_t* thread, nub_work_t* work);
+
+
+/**
+ * Create a unit of work to be dispached out to the thread's processing queue.
+ *
+ * In the future nub_work_t will also be used for event loop dispatch queues.
+ */
+NUB_EXTERN nub_work_t nub_work_init(nub_work_cb cb, void* arg);
 
 #ifdef __cplusplus
 }

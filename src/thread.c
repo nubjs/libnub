@@ -27,16 +27,15 @@ static void nub__work_signal_cb(uv_async_t* handle) {
 static void nub__thread_entry_cb(void* arg) {
   nub_thread_t* thread;
   fuq_queue_t* queue;
-  void** item;
+  nub_work_t* item;
 
   thread = (nub_thread_t*) arg;
   queue = &thread->incoming_;
 
   for (;;) {
     while (!fuq_empty(queue)) {
-      item = fuq_dequeue(queue);
-      ((nub_thread_work_cb) item[0])(thread, item[1]);
-      free(item);
+      item = (nub_work_t*) fuq_dequeue(queue);
+      (item->cb)(thread, item->arg);
     }
     if (0 < thread->disposed)
       break;
@@ -101,15 +100,7 @@ void nub_thread_join(nub_thread_t* thread) {
 }
 
 
-void nub_thread_push(nub_thread_t* thread,
-                     nub_thread_work_cb work_cb,
-                     void* arg) {
-  void** args;
-  /* TODO: Re-architect to not need a malloc() on every call. */
-  args = malloc(sizeof(*args) * 2);
-  ASSERT(NULL != args);
-  args[0] = (void*) work_cb;
-  args[1] = arg;
-  fuq_enqueue(&thread->incoming_, args);
+void nub_thread_push(nub_thread_t* thread, nub_work_t* work) {
+  fuq_enqueue(&thread->incoming_, (void*) work);
   uv_cond_signal(&thread->cond_wait_);
 }

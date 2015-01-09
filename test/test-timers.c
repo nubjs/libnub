@@ -3,49 +3,69 @@
 #include "helper.h"
 #include "uv.h"
 
+/* uv_timer_t must come first. */
 typedef struct {
-  uv_timer_t timer;
+  uv_timer_t uvtimer;
+  nub_work_t work;
   uint64_t timeout;
   uint64_t repeat;
   uint64_t cntr;
+  void* data;
 } timer_work;
 
 
+/*** test timer huge timeout ***/
+
+/* Run from main thread. */
+static void timer_timeout_thread_disposed_cb(nub_thread_t* thread) {
+  void** stor = (void**) thread->data;
+  timer_work* tiny_timer = (timer_work*) stor[0];
+  timer_work* huge_timer1 = (timer_work*) stor[1];
+  timer_work* huge_timer2 = (timer_work*) stor[2];
+
+  uv_close((uv_handle_t*) tiny_timer, NULL);
+  uv_close((uv_handle_t*) huge_timer1, NULL);
+  uv_close((uv_handle_t*) huge_timer2, NULL);
+
+  thread->data = (void*) 0xf00;
+}
+
+
+/* Run from spawned thread. */
+static void timer_timeout_close_cb(nub_thread_t* thread, void* arg) {
+  void** stor = (void**) arg;
+  timer_work* tiny_timer = (timer_work*) stor[0];
+  timer_work* huge_timer1 = (timer_work*) stor[1];
+  timer_work* huge_timer2 = (timer_work*) stor[2];
+
+  ASSERT((void*) 0xba4 == tiny_timer->uvtimer.data);
+  ASSERT((void*) 0xba4 == huge_timer1->uvtimer.data);
+  ASSERT((void*) 0xba4 == huge_timer2->uvtimer.data);
+
+  thread->data = arg;
+  nub_thread_dispose(thread, timer_timeout_thread_disposed_cb);
+}
+
+
+/* Run from main thread. */
 static void tiny_timer_cb(uv_timer_t* handle) {
-  ASSERT(NULL != handle->data);
-
-  void** timers = (void**) handle->data;
-  if (uv_has_ref((uv_handle_t*) timers[0]) == 0 ||
-      uv_has_ref((uv_handle_t*) timers[1]) == 0) {
-    ASSERT(uv_timer_start(handle, tiny_timer_cb, 1, 0) == 0);
-    return;
-  }
-
-  uv_close((uv_handle_t*) handle, NULL);
-  uv_close((uv_handle_t*) timers[0], NULL);
-  uv_close((uv_handle_t*) timers[1], NULL);
 }
 
 
-static void tiny_timer_thread_disposed_cb(nub_thread_t* thread) {
-  thread->data = (void*) 0xbad;
-}
-
-
-static void tiny_timer_work_cb(nub_thread_t* thread, void* arg) {
+/* Run from spawned thread. */
+static void huge_timer_work_cb(nub_thread_t* thread, void* arg) {
   timer_work* work = (timer_work*) arg;
+  work->uvtimer.data = (void*) 0xba4;
 
   nub_loop_block(thread);
 
-  ASSERT(uv_timer_init(&thread->nubloop->uvloop, &work->timer) == 0);
-  ASSERT(uv_timer_start(&work->timer,
+  ASSERT(uv_timer_init(&thread->nubloop->uvloop, &work->uvtimer) == 0);
+  ASSERT(uv_timer_start(&work->uvtimer,
                         tiny_timer_cb,
                         work->timeout,
                         work->repeat) == 0);
 
   nub_loop_resume(thread);
-  if ((uint64_t) - 1 == work->timeout)
-    nub_thread_dispose(thread, tiny_timer_thread_disposed_cb);
 }
 
 
@@ -55,22 +75,31 @@ TEST_IMPL(timer_huge_timeout) {
   timer_work tiny_timer = { .timeout = 1, .repeat = 0 };
   timer_work huge_timer1 = { .timeout = 0xffffffffffffLL, .repeat = 0 };
   timer_work huge_timer2 = { .timeout = (uint64_t) - 1, .repeat = 0 };
-  void* timers[2] = { &huge_timer1, &huge_timer2 };
+  void* stor[3] = { &tiny_timer, &huge_timer1, &huge_timer2 };
+  nub_work_t closer = nub_work_init(timer_timeout_close_cb, stor);
 
-  tiny_timer.timer.data = timers;
+  tiny_timer.work = nub_work_init(huge_timer_work_cb, &tiny_timer);
+  huge_timer1.work = nub_work_init(huge_timer_work_cb, &huge_timer1);
+  huge_timer2.work = nub_work_init(huge_timer_work_cb, &huge_timer2);
+
+  tiny_timer.uvtimer.data = NULL;
+  huge_timer1.uvtimer.data = NULL;
+  huge_timer2.uvtimer.data = NULL;
 
   nub_loop_init(&loop);
 
+  /* Spawn the thread that will create the timers. */
   ASSERT(nub_thread_create(&loop, &timer_thread) == 0);
-  timer_thread.data = NULL;
 
   /* Push work to the spawned thread. */
-  nub_thread_push(&timer_thread, tiny_timer_work_cb, (void*) &tiny_timer);
-  nub_thread_push(&timer_thread, tiny_timer_work_cb, (void*) &huge_timer1);
-  nub_thread_push(&timer_thread, tiny_timer_work_cb, (void*) &huge_timer2);
+  nub_thread_push(&timer_thread, &tiny_timer.work);
+  nub_thread_push(&timer_thread, &huge_timer1.work);
+  nub_thread_push(&timer_thread, &huge_timer2.work);
+  nub_thread_push(&timer_thread, &closer);
 
   ASSERT(nub_loop_run(&loop, UV_RUN_DEFAULT) == 0);
-  ASSERT(0xbad == (int) timer_thread.data);
+
+  ASSERT(0xf00 == (int) timer_thread.data);
 
   /* Make valgrind happy. */
   nub_loop_dispose(&loop);
@@ -79,12 +108,18 @@ TEST_IMPL(timer_huge_timeout) {
 }
 
 
+/*** test timer huge repeat ***/
+
 /* Run from the main thread. */
 static void huge_repeat_cb(uv_timer_t* handle) {
   timer_work* timer = (timer_work*) handle;
+  nub_thread_t* timer_thread = (nub_thread_t*) timer->data;
 
   if (10 != ++timer->cntr)
     return;
+
+  nub_thread_join(timer_thread);
+  timer_thread->data = (void*) 0xf00;
 
   ASSERT(NULL != handle->data);
   uv_close((uv_handle_t*) handle, NULL);
@@ -99,15 +134,13 @@ static void huge_repeat_work_cb(nub_thread_t* thread, void* arg) {
   /* Event loop critical section. */
   nub_loop_block(thread);
 
-  ASSERT(uv_timer_init(&thread->nubloop->uvloop, &work->timer) == 0);
-  ASSERT(uv_timer_start(&work->timer,
+  ASSERT(uv_timer_init(&thread->nubloop->uvloop, &work->uvtimer) == 0);
+  ASSERT(uv_timer_start(&work->uvtimer,
                         huge_repeat_cb,
                         work->timeout,
                         work->repeat) == 0);
 
   nub_loop_resume(thread);
-  if ((uint64_t) - 1 == work->repeat)
-    nub_thread_dispose(thread, NULL);
 }
 
 
@@ -117,20 +150,26 @@ TEST_IMPL(timer_huge_repeat) {
   timer_work tiny_timer = { .timeout = 2, .repeat = 2, .cntr = 0 };
   timer_work huge_timer = { .timeout = 1, .repeat = (uint64_t) - 1, .cntr = 0 };
 
-  tiny_timer.timer.data = &huge_timer;
-  huge_timer.timer.data = NULL;
+  tiny_timer.uvtimer.data = &huge_timer;
+  tiny_timer.work = nub_work_init(huge_repeat_work_cb, &tiny_timer);
+  tiny_timer.data = &timer_thread;
+
+  huge_timer.uvtimer.data = NULL;
+  huge_timer.work = nub_work_init(huge_repeat_work_cb, &huge_timer);
+  huge_timer.data = &timer_thread;
 
   nub_loop_init(&loop);
 
   ASSERT(nub_thread_create(&loop, &timer_thread) == 0);
 
-  /* Push work to the spawned thread. */
-  nub_thread_push(&timer_thread, huge_repeat_work_cb, &tiny_timer);
-  nub_thread_push(&timer_thread, huge_repeat_work_cb, &huge_timer);
+  nub_thread_push(&timer_thread, &tiny_timer.work);
+  nub_thread_push(&timer_thread, &huge_timer.work);
 
   ASSERT(nub_loop_run(&loop, UV_RUN_DEFAULT) == 0);
-  ASSERT(tiny_timer.cntr == 10);
-  ASSERT(huge_timer.cntr == 1);
+
+  ASSERT(10 == tiny_timer.cntr);
+  ASSERT(1 == huge_timer.cntr);
+  ASSERT((void*) 0xf00 == timer_thread.data);
 
   /* Make valgrind happy. */
   nub_loop_dispose(&loop);
@@ -139,18 +178,22 @@ TEST_IMPL(timer_huge_repeat) {
 }
 
 
+/*** test single timer used multiple times ***/
+
 /* Ran from the main thread */
 static void timer_run_once_timer_cb(uv_timer_t* handle) {
   timer_work* timer = (timer_work*) handle;
   timer->cntr++;
   uv_close((uv_handle_t*) handle, NULL);
+  /* Cleanup spawned thread. */
+  nub_thread_join((nub_thread_t*) handle->data);
 }
 
 
 /* Ran from the spawned thread. */
 static void run_once_work_cb(nub_thread_t* thread, void* arg) {
-  timer_work* work = (timer_work*) arg;
-  uv_timer_t* timer_handle = (uv_timer_t*) work;
+  timer_work* timer = (timer_work*) arg;
+  uv_timer_t* timer_handle = (uv_timer_t*) timer;
 
   /* Event loop critical section */
   nub_loop_block(thread);
@@ -159,7 +202,6 @@ static void run_once_work_cb(nub_thread_t* thread, void* arg) {
   ASSERT(uv_timer_start(timer_handle, timer_run_once_timer_cb, 0, 0) == 0);
 
   nub_loop_resume(thread);
-  nub_thread_dispose(thread, NULL);
 }
 
 
@@ -169,19 +211,22 @@ TEST_IMPL(timer_run_once) {
   timer_work timer;
 
   timer.cntr = 0;
+  timer.work = nub_work_init(run_once_work_cb, &timer);
+  timer.uvtimer.data = &timer_thread;
+
   nub_loop_init(&loop);
 
   ASSERT(nub_thread_create(&loop, &timer_thread) == 0);
 
-  /* Push work to the spawned thread. */
-  nub_thread_push(&timer_thread, run_once_work_cb, &timer);
+  nub_thread_push(&timer_thread, &timer.work);
 
   ASSERT(nub_loop_run(&loop, UV_RUN_DEFAULT) == 0);
   ASSERT(timer.cntr == 1);
 
   ASSERT(nub_thread_create(&loop, &timer_thread) == 0);
+  timer.uvtimer.data = &timer_thread;
 
-  nub_thread_push(&timer_thread, run_once_work_cb, &timer);
+  nub_thread_push(&timer_thread, &timer.work);
 
   ASSERT(nub_loop_run(&loop, UV_RUN_DEFAULT) == 0);
   ASSERT(timer.cntr == 2);
@@ -193,8 +238,8 @@ TEST_IMPL(timer_run_once) {
 }
 
 
-/* TODO(trevnorris): This has some sort of race condition that occationally
- * causes the test to hang. Fix it. */
+/*** test multiple timers run from multiple threads ***/
+
 TEST_IMPL(timer_run_once_multi) {
   nub_loop_t loop;
   nub_thread_t timer_thread0;
@@ -203,18 +248,34 @@ TEST_IMPL(timer_run_once_multi) {
   timer_work timer1;
 
   timer0.cntr = 0;
+  timer0.work = nub_work_init(run_once_work_cb, &timer0);
+  timer0.uvtimer.data = &timer_thread0;
+
   timer1.cntr = 0;
+  timer1.work = nub_work_init(run_once_work_cb, &timer1);
+  timer1.uvtimer.data = &timer_thread1;
+
   nub_loop_init(&loop);
 
   ASSERT(nub_thread_create(&loop, &timer_thread0) == 0);
   ASSERT(nub_thread_create(&loop, &timer_thread1) == 0);
 
-  nub_thread_push(&timer_thread0, run_once_work_cb, &timer0);
-  nub_thread_push(&timer_thread1, run_once_work_cb, &timer1);
+  nub_thread_push(&timer_thread0, &timer0.work);
+  nub_thread_push(&timer_thread1, &timer1.work);
 
   ASSERT(nub_loop_run(&loop, UV_RUN_DEFAULT) == 0);
   ASSERT(timer0.cntr == 1);
   ASSERT(timer1.cntr == 1);
+
+  ASSERT(nub_thread_create(&loop, &timer_thread0) == 0);
+  ASSERT(nub_thread_create(&loop, &timer_thread1) == 0);
+
+  nub_thread_push(&timer_thread0, &timer0.work);
+  nub_thread_push(&timer_thread1, &timer1.work);
+
+  ASSERT(nub_loop_run(&loop, UV_RUN_DEFAULT) == 0);
+  ASSERT(timer0.cntr == 2);
+  ASSERT(timer1.cntr == 2);
 
   nub_loop_dispose(&loop);
 
