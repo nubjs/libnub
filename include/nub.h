@@ -171,7 +171,7 @@ NUB_EXTERN void nub_thread_join(nub_thread_t* thread);
  * Push data onto the processing queue. Should only be run from the nub_loop_t
  * thread. This will signal the spawned thread there is an item on the queue.
  */
-NUB_EXTERN void nub_thread_push(nub_thread_t* thread, nub_work_t* work);
+NUB_EXTERN void nub_thread_enqueue(nub_thread_t* thread, nub_work_t* work);
 
 
 /**

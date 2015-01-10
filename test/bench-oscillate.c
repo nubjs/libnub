@@ -14,7 +14,7 @@ static void thread_call(nub_thread_t* thread, void* arg) {
 
   /* Block event loop long enough to queue up running this function again. */
   nub_loop_block(thread);
-  nub_thread_push(thread, (nub_work_t*) arg);
+  nub_thread_enqueue(thread, (nub_work_t*) arg);
   nub_loop_resume(thread);
 }
 
@@ -33,7 +33,7 @@ BENCHMARK_IMPL(oscillate) {
 
   time = uv_hrtime();
 
-  nub_thread_push(&thread, &work);
+  nub_thread_enqueue(&thread, &work);
 
   ASSERT(nub_loop_run(&loop, UV_RUN_DEFAULT) == 0);
 
@@ -74,14 +74,14 @@ BENCHMARK_IMPL(oscillate_multi) {
 
   time = uv_hrtime();
 
-  nub_thread_push(&thread0, &work);
-  nub_thread_push(&thread1, &work);
-  nub_thread_push(&thread2, &work);
-  nub_thread_push(&thread3, &work);
-  nub_thread_push(&thread4, &work);
-  nub_thread_push(&thread5, &work);
-  nub_thread_push(&thread6, &work);
-  nub_thread_push(&thread7, &work);
+  nub_thread_enqueue(&thread0, &work);
+  nub_thread_enqueue(&thread1, &work);
+  nub_thread_enqueue(&thread2, &work);
+  nub_thread_enqueue(&thread3, &work);
+  nub_thread_enqueue(&thread4, &work);
+  nub_thread_enqueue(&thread5, &work);
+  nub_thread_enqueue(&thread6, &work);
+  nub_thread_enqueue(&thread7, &work);
 
   ASSERT(nub_loop_run(&loop, UV_RUN_DEFAULT) == 0);
 

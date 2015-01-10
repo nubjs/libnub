@@ -100,7 +100,7 @@ void nub_thread_join(nub_thread_t* thread) {
 }
 
 
-void nub_thread_push(nub_thread_t* thread, nub_work_t* work) {
+void nub_thread_enqueue(nub_thread_t* thread, nub_work_t* work) {
   fuq_enqueue(&thread->incoming_, (void*) work);
   uv_cond_signal(&thread->cond_wait_);
 }
