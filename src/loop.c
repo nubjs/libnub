@@ -33,6 +33,7 @@ static void nub__thread_dispose(uv_async_t* handle) {
   queue = &loop->thread_dispose_queue_;
   while (!fuq_empty(queue)) {
     thread = (nub_thread_t*) fuq_dequeue(queue);
+    ASSERT(NULL != thread);
     nub_thread_join(thread);
     if (NULL != thread->disposed_cb_)
       thread->disposed_cb_(thread);
@@ -61,6 +62,9 @@ void nub_loop_init(nub_loop_t* loop) {
   ASSERT(0 == er);
 
   fuq_init(&loop->thread_dispose_queue_);
+
+  er = uv_mutex_init(&loop->thread_dispose_lock_);
+  ASSERT(0 == er);
 
   async_handle = (uv_async_t*) malloc(sizeof(*async_handle));
   CHECK_NE(NULL, async_handle);
@@ -95,6 +99,7 @@ void nub_loop_dispose(nub_loop_t* loop) {
   ASSERT(0 == uv_is_active((uv_handle_t*) loop->thread_dispose_));
 
   fuq_dispose(&loop->thread_dispose_queue_);
+  uv_mutex_destroy(&loop->thread_dispose_lock_);
   uv_sem_destroy(&loop->blocker_sem_);
   fuq_dispose(&loop->async_queue_);
   uv_mutex_destroy(&loop->async_mutex_);
@@ -104,17 +109,16 @@ void nub_loop_dispose(nub_loop_t* loop) {
 }
 
 
+/* Should be run from spawned thread. */
 int nub_loop_block(nub_thread_t* thread) {
-  uv_mutex_t* mutex;
-  fuq_queue_t* queue;
+  uv_mutex_t* mutex = &thread->nubloop->async_mutex_;
+  fuq_queue_t* queue = &thread->nubloop->async_queue_;
   int er;
   int is_empty;
 
-  mutex = &thread->nubloop->async_mutex_;
-  queue = &thread->nubloop->async_queue_;
-  is_empty = fuq_empty(queue);
 
   uv_mutex_lock(mutex);
+  is_empty = fuq_empty(queue);
   fuq_enqueue(queue, thread);
   uv_mutex_unlock(mutex);
 

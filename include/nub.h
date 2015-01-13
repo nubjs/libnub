@@ -53,6 +53,7 @@ struct nub_loop_s {
   volatile unsigned int ref_;   /* Nuber of threads attached to this loop */
   uv_async_t* thread_dispose_;  /* Used to dispose of threads */
   fuq_queue_t thread_dispose_queue_;
+  uv_mutex_t thread_dispose_lock_;
 };
 
 
@@ -72,8 +73,7 @@ struct nub_thread_s {
    * is gone. Used in an internal uv_async_send() call to signal the event loop
    * a thread has work to do. */
   uv_async_t* async_signal_;
-  uv_cond_t cond_wait_;
-  uv_mutex_t cond_mutex_;
+  uv_sem_t sem_wait_;
   nub_thread_disposed_cb disposed_cb_;
 };
 

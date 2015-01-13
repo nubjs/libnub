@@ -39,7 +39,7 @@ static void nub__thread_entry_cb(void* arg) {
     }
     if (0 < thread->disposed)
       break;
-    uv_cond_wait(&thread->cond_wait_, &thread->cond_mutex_);
+    uv_sem_wait(&thread->sem_wait_);
   }
 
   ASSERT(1 == fuq_empty(queue));
@@ -63,10 +63,7 @@ int nub_thread_create(nub_loop_t* loop, nub_thread_t* thread) {
   er = uv_sem_init(&thread->blocker_sem_, 0);
   ASSERT(0 == er);
 
-  er = uv_cond_init(&thread->cond_wait_);
-  ASSERT(0 == er);
-
-  er = uv_mutex_init(&thread->cond_mutex_);
+  er = uv_sem_init(&thread->sem_wait_, 0);
   ASSERT(0 == er);
 
   fuq_init(&thread->incoming_);
@@ -82,19 +79,21 @@ int nub_thread_create(nub_loop_t* loop, nub_thread_t* thread) {
 void nub_thread_dispose(nub_thread_t* thread, nub_thread_disposed_cb cb) {
   thread->disposed = 1;
   thread->disposed_cb_ = cb;
+  uv_mutex_lock(&thread->nubloop->thread_dispose_lock_);
   fuq_enqueue(&thread->nubloop->thread_dispose_queue_, thread);
+  uv_mutex_unlock(&thread->nubloop->thread_dispose_lock_);
   uv_async_send(thread->nubloop->thread_dispose_);
 }
 
 
 void nub_thread_join(nub_thread_t* thread) {
+  ASSERT(NULL != thread);
   thread->disposed = 1;
-  uv_cond_signal(&thread->cond_wait_);
+  uv_sem_post(&thread->sem_wait_);
   uv_thread_join(&thread->uvthread);
   uv_close((uv_handle_t*) thread->async_signal_, nub__free_handle_cb);
   uv_sem_destroy(&thread->blocker_sem_);
-  uv_cond_destroy(&thread->cond_wait_);
-  uv_mutex_destroy(&thread->cond_mutex_);
+  uv_sem_destroy(&thread->sem_wait_);
   --thread->nubloop->ref_;
   thread->nubloop = NULL;
 }
@@ -102,5 +101,5 @@ void nub_thread_join(nub_thread_t* thread) {
 
 void nub_thread_enqueue(nub_thread_t* thread, nub_work_t* work) {
   fuq_enqueue(&thread->incoming_, (void*) work);
-  uv_cond_signal(&thread->cond_wait_);
+  uv_sem_post(&thread->sem_wait_);
 }

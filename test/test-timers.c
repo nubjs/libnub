@@ -113,17 +113,16 @@ TEST_IMPL(timer_huge_timeout) {
 /* Run from the main thread. */
 static void huge_repeat_cb(uv_timer_t* handle) {
   timer_work* timer = (timer_work*) handle;
-  nub_thread_t* timer_thread = (nub_thread_t*) timer->data;
 
-  if (10 != ++timer->cntr)
+  timer->cntr += 1;
+
+  if (((uint64_t) - 1) == timer->repeat)
+    return uv_close((uv_handle_t*) timer, NULL);
+
+  if (10 != timer->cntr)
     return;
 
-  nub_thread_join(timer_thread);
-  timer_thread->data = (void*) 0xf00;
-
-  ASSERT(NULL != handle->data);
   uv_close((uv_handle_t*) handle, NULL);
-  uv_close((uv_handle_t*) handle->data, NULL);
 }
 
 
@@ -144,11 +143,19 @@ static void huge_repeat_work_cb(nub_thread_t* thread, void* arg) {
 }
 
 
+/* Run from spawned thread. */
+static void timer_repeat_close_cb(nub_thread_t* thread, void* arg) {
+  thread->data = (void*) 0xf00;
+  nub_thread_dispose(thread, NULL);
+}
+
+
 TEST_IMPL(timer_huge_repeat) {
   nub_loop_t loop;
   nub_thread_t timer_thread;
   timer_work tiny_timer = { .timeout = 2, .repeat = 2, .cntr = 0 };
   timer_work huge_timer = { .timeout = 1, .repeat = (uint64_t) - 1, .cntr = 0 };
+  nub_work_t closer = nub_work_init(timer_repeat_close_cb, NULL);
 
   tiny_timer.uvtimer.data = &huge_timer;
   tiny_timer.work = nub_work_init(huge_repeat_work_cb, &tiny_timer);
@@ -164,6 +171,7 @@ TEST_IMPL(timer_huge_repeat) {
 
   nub_thread_enqueue(&timer_thread, &tiny_timer.work);
   nub_thread_enqueue(&timer_thread, &huge_timer.work);
+  nub_thread_enqueue(&timer_thread, &closer);
 
   ASSERT(nub_loop_run(&loop, UV_RUN_DEFAULT) == 0);
 
@@ -185,8 +193,6 @@ static void timer_run_once_timer_cb(uv_timer_t* handle) {
   timer_work* timer = (timer_work*) handle;
   timer->cntr++;
   uv_close((uv_handle_t*) handle, NULL);
-  /* Cleanup spawned thread. */
-  nub_thread_join((nub_thread_t*) handle->data);
 }
 
 
@@ -202,6 +208,8 @@ static void run_once_work_cb(nub_thread_t* thread, void* arg) {
   ASSERT(uv_timer_start(timer_handle, timer_run_once_timer_cb, 0, 0) == 0);
 
   nub_loop_resume(thread);
+
+  nub_thread_dispose(thread, NULL);
 }
 
 
@@ -264,6 +272,7 @@ TEST_IMPL(timer_run_once_multi) {
   nub_thread_enqueue(&timer_thread1, &timer1.work);
 
   ASSERT(nub_loop_run(&loop, UV_RUN_DEFAULT) == 0);
+
   ASSERT(timer0.cntr == 1);
   ASSERT(timer1.cntr == 1);
 
@@ -274,6 +283,7 @@ TEST_IMPL(timer_run_once_multi) {
   nub_thread_enqueue(&timer_thread1, &timer1.work);
 
   ASSERT(nub_loop_run(&loop, UV_RUN_DEFAULT) == 0);
+
   ASSERT(timer0.cntr == 2);
   ASSERT(timer1.cntr == 2);
 
