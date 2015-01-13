@@ -4,10 +4,10 @@
 int main(int argc, char **argv) {
   argv = uv_setup_args(argc, argv);
 
-  run_test_timer_huge_timeout();
-  run_test_timer_huge_repeat();
-  run_test_timer_run_once();
-  run_test_timer_run_once_multi();
+  run_test_single_timer_single_thread();
+  run_test_multi_timer_single_thread();
+  run_test_single_timer_multi_thread();
+  run_test_multi_timer_multi_thread();
 
   return 0;
 }
