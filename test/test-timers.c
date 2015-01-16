@@ -78,9 +78,9 @@ TEST_IMPL(single_timer_single_thread) {
   timer.timeout = 1;
   timer.repeat = 0;
   timer.cntr = 0;
-  timer.work = nub_work_init(create_timer_cb, &timer);
   timer.data = &thread;
   timer.t_cb = single_timer_join_cb;
+  nub_work_init(&timer.work, create_timer_cb, &timer);
 
   nub_loop_init(&loop);
   ASSERT(nub_thread_create(&loop, &thread) == 0);
@@ -110,8 +110,8 @@ TEST_IMPL(single_timer_single_thread) {
   nub_loop_dispose(&loop);
 
   /* Repeat tests, but using nub_thread_dispose() instead. */
-  timer.work = nub_work_init(create_timer_dispose_cb, &timer);
   timer.t_cb = single_timer_cb;
+  nub_work_init(&timer.work, create_timer_dispose_cb, &timer);
 
   nub_loop_init(&loop);
   ASSERT(nub_thread_create(&loop, &thread) == 0);
@@ -192,16 +192,16 @@ TEST_IMPL(multi_timer_single_thread) {
   timer1.timeout = 1;
   timer1.repeat = 0;
   timer1.cntr = 0;
-  timer1.work = nub_work_init(create_timer_cb, &timer1);
   timer1.data = &thread;
   timer1.t_cb = multi_timer_cb;
+  nub_work_init(&timer1.work, create_timer_cb, &timer1);
 
   timer2.timeout = 1;
   timer2.repeat = 0;
   timer2.cntr = 0;
-  timer2.work = nub_work_init(create_timer_cb, &timer2);
   timer2.data = &thread;
   timer2.t_cb = multi_timer_cb;
+  nub_work_init(&timer2.work, create_timer_cb, &timer2);
 
   nub_loop_init(&loop);
   ASSERT(nub_thread_create(&loop, &thread) == 0);
@@ -239,8 +239,8 @@ TEST_IMPL(multi_timer_single_thread) {
   nub_loop_dispose(&loop);
 
   /* Repeat tests, but use nub_thread_dispose() instead. */
-  timer1.work = nub_work_init(thread_multi_timer_dispose_cb, &timer1);
-  timer2.work = nub_work_init(thread_multi_timer_dispose_cb, &timer2);
+  nub_work_init(&timer1.work, thread_multi_timer_dispose_cb, &timer1);
+  nub_work_init(&timer2.work, thread_multi_timer_dispose_cb, &timer2);
 
   nub_loop_init(&loop);
   ASSERT(nub_thread_create(&loop, &thread) == 0);
@@ -293,16 +293,16 @@ TEST_IMPL(single_timer_multi_thread) {
   timer1.timeout = 1;
   timer1.repeat = 0;
   timer1.cntr = 0;
-  timer1.work = nub_work_init(create_timer_cb, &timer1);
   timer1.data = &thread1;
   timer1.t_cb = single_timer_join_cb;
+  nub_work_init(&timer1.work, create_timer_cb, &timer1);
 
   timer2.timeout = 1;
   timer2.repeat = 0;
   timer2.cntr = 0;
-  timer2.work = nub_work_init(create_timer_cb, &timer2);
   timer2.data = &thread2;
   timer2.t_cb = single_timer_join_cb;
+  nub_work_init(&timer2.work, create_timer_cb, &timer2);
 
   nub_loop_init(&loop);
   ASSERT(nub_thread_create(&loop, &thread1) == 0);
@@ -344,10 +344,10 @@ TEST_IMPL(single_timer_multi_thread) {
   nub_loop_dispose(&loop);
 
   /* Repeat tests, but using nub_thread_dispose() instead. */
-  timer1.work = nub_work_init(create_timer_dispose_cb, &timer1);
   timer1.t_cb = single_timer_cb;
-  timer2.work = nub_work_init(create_timer_dispose_cb, &timer2);
+  nub_work_init(&timer1.work, create_timer_dispose_cb, &timer1);
   timer2.t_cb = single_timer_cb;
+  nub_work_init(&timer2.work, create_timer_dispose_cb, &timer2);
 
   nub_loop_init(&loop);
   ASSERT(nub_thread_create(&loop, &thread1) == 0);
@@ -445,33 +445,33 @@ TEST_IMPL(multi_timer_multi_thread) {
   timer1.repeat = 0;
   timer1.cntr = 0;
   timer1.shared_cntr = &cntr1_ptr;
-  timer1.work = nub_work_init(create_timer_cb, &timer1);
   timer1.data = &thread1;
   timer1.t_cb = multi_timer_multi_thread_cb;
+  nub_work_init(&timer1.work, create_timer_cb, &timer1);
 
   timer2.timeout = 1;
   timer2.repeat = 0;
   timer2.cntr = 0;
   timer2.shared_cntr = &cntr1_ptr;
-  timer2.work = nub_work_init(create_timer_cb, &timer2);
   timer2.data = &thread1;
   timer2.t_cb = multi_timer_multi_thread_cb;
+  nub_work_init(&timer2.work, create_timer_cb, &timer2);
 
   timer3.timeout = 1;
   timer3.repeat = 0;
   timer3.cntr = 0;
   timer3.shared_cntr = &cntr2_ptr;
-  timer3.work = nub_work_init(create_timer_cb, &timer3);
   timer3.data = &thread2;
   timer3.t_cb = multi_timer_multi_thread_cb;
+  nub_work_init(&timer3.work, create_timer_cb, &timer3);
 
   timer4.timeout = 1;
   timer4.repeat = 0;
   timer4.cntr = 0;
   timer4.shared_cntr = &cntr2_ptr;
-  timer4.work = nub_work_init(create_timer_cb, &timer4);
   timer4.data = &thread2;
   timer4.t_cb = multi_timer_multi_thread_cb;
+  nub_work_init(&timer4.work, create_timer_cb, &timer4);
 
   nub_loop_init(&loop);
   ASSERT(nub_thread_create(&loop, &thread1) == 0);
@@ -529,10 +529,10 @@ TEST_IMPL(multi_timer_multi_thread) {
   nub_loop_dispose(&loop);
 
   /* Repeat tests, but use nub_thread_dispose() instead. */
-  timer1.work = nub_work_init(multi_all_dispose_cb, &timer1);
-  timer2.work = nub_work_init(multi_all_dispose_cb, &timer2);
-  timer3.work = nub_work_init(multi_all_dispose_cb, &timer3);
-  timer4.work = nub_work_init(multi_all_dispose_cb, &timer4);
+  nub_work_init(&timer1.work, multi_all_dispose_cb, &timer1);
+  nub_work_init(&timer2.work, multi_all_dispose_cb, &timer2);
+  nub_work_init(&timer3.work, multi_all_dispose_cb, &timer3);
+  nub_work_init(&timer4.work, multi_all_dispose_cb, &timer4);
 
   nub_loop_init(&loop);
   ASSERT(nub_thread_create(&loop, &thread1) == 0);

@@ -180,7 +180,7 @@ NUB_EXTERN void nub_thread_enqueue(nub_thread_t* thread, nub_work_t* work);
  *
  * In the future nub_work_t will also be used for event loop dispatch queues.
  */
-NUB_EXTERN nub_work_t nub_work_init(nub_work_cb cb, void* arg);
+NUB_EXTERN void nub_work_init(nub_work_t* work, nub_work_cb cb, void* arg);
 
 #ifdef __cplusplus
 }

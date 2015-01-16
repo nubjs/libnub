@@ -26,7 +26,7 @@ BENCHMARK_IMPL(oscillate) {
   uint64_t time;
 
   iter = ITER;
-  work = nub_work_init(thread_call, &work);
+  nub_work_init(&work, thread_call, &work);
 
   nub_loop_init(&loop);
   ASSERT(nub_thread_create(&loop, &thread) == 0);
@@ -60,7 +60,7 @@ BENCHMARK_IMPL(oscillate_multi) {
   uint64_t time;
 
   iter = ITER;
-  work = nub_work_init(thread_call, &work);
+  nub_work_init(&work, thread_call, &work);
 
   nub_loop_init(&loop);
   ASSERT(nub_thread_create(&loop, &thread0) == 0);
