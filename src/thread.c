@@ -39,7 +39,9 @@ static void nub__thread_entry_cb(void* arg) {
     }
     if (0 < thread->disposed)
       break;
+    thread->processing_ = 0;
     uv_sem_wait(&thread->sem_wait_);
+    thread->processing_ = 1;
   }
 
   ASSERT(1 == fuq_empty(queue));
@@ -68,6 +70,7 @@ int nub_thread_create(nub_loop_t* loop, nub_thread_t* thread) {
 
   fuq_init(&thread->incoming_);
   thread->disposed = 0;
+  thread->processing_ = 0;
   thread->nubloop = loop;
   thread->disposed_cb_ = NULL;
   ++loop->ref_;
@@ -101,5 +104,6 @@ void nub_thread_join(nub_thread_t* thread) {
 
 void nub_thread_enqueue(nub_thread_t* thread, nub_work_t* work) {
   fuq_enqueue(&thread->incoming_, (void*) work);
-  uv_sem_post(&thread->sem_wait_);
+  if (0 == thread->processing_)
+    uv_sem_post(&thread->sem_wait_);
 }
