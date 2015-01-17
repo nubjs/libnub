@@ -6,6 +6,7 @@ int main(int argc, char **argv) {
 
   run_bench_oscillate();
   run_bench_oscillate_multi();
+  run_bench_enqueue_work();
 
   return 0;
 }

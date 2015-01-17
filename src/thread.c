@@ -16,10 +16,10 @@ static void nub__work_signal_cb(uv_async_t* handle) {
   nub_thread_t* thread;
 
   loop = ((nub_thread_t*) handle->data)->nubloop;
-  while (!fuq_empty(&loop->async_queue_)) {
-    thread = (nub_thread_t*) fuq_dequeue(&loop->async_queue_);
-    uv_sem_post(&thread->blocker_sem_);
-    uv_sem_wait(&loop->blocker_sem_);
+  while (!fuq_empty(&loop->blocking_queue_)) {
+    thread = (nub_thread_t*) fuq_dequeue(&loop->blocking_queue_);
+    uv_sem_post(&thread->thread_lock_sem_);
+    uv_sem_wait(&loop->loop_lock_sem_);
   }
 }
 
@@ -60,7 +60,7 @@ int nub_thread_create(nub_loop_t* loop, nub_thread_t* thread) {
 
   ASSERT(uv_loop_alive(&loop->uvloop));
 
-  er = uv_sem_init(&thread->blocker_sem_, 0);
+  er = uv_sem_init(&thread->thread_lock_sem_, 0);
   ASSERT(0 == er);
 
   er = uv_sem_init(&thread->sem_wait_, 1);
@@ -70,6 +70,8 @@ int nub_thread_create(nub_loop_t* loop, nub_thread_t* thread) {
   thread->disposed = 0;
   thread->nubloop = loop;
   thread->disposed_cb_ = NULL;
+  thread->work.thread = thread;
+  thread->work.work_type = NUB_LOOP_QUEUE_NONE;
   ++loop->ref_;
 
   return uv_thread_create(&thread->uvthread, nub__thread_entry_cb, thread);
@@ -92,7 +94,7 @@ void nub_thread_join(nub_thread_t* thread) {
   uv_sem_post(&thread->sem_wait_);
   uv_thread_join(&thread->uvthread);
   uv_close((uv_handle_t*) thread->async_signal_, nub__free_handle_cb);
-  uv_sem_destroy(&thread->blocker_sem_);
+  uv_sem_destroy(&thread->thread_lock_sem_);
   uv_sem_destroy(&thread->sem_wait_);
   --thread->nubloop->ref_;
   thread->nubloop = NULL;

@@ -93,3 +93,36 @@ BENCHMARK_IMPL(oscillate_multi) {
 
   return 0;
 }
+
+
+void enqueue_call(nub_thread_t* thread, void* arg) {
+  nub_thread_dispose(thread, NULL);
+}
+
+
+BENCHMARK_IMPL(enqueue_work) {
+  nub_loop_t loop;
+  nub_thread_t thread;
+  nub_work_t work;
+  uint64_t time;
+
+  iter = ITER;
+
+  nub_work_init(&work, enqueue_call, &work);
+  nub_loop_init(&loop);
+  ASSERT(nub_thread_create(&loop, &thread) == 0);
+
+  time = uv_hrtime();
+
+  nub_thread_enqueue(&thread, &work);
+
+  ASSERT(nub_loop_run(&loop, UV_RUN_DEFAULT) == 0);
+
+  time = uv_hrtime() - time;
+  fprintf(stderr, "enqueue_work:  %Lf/sec\n", ITER / (time / 1e9));
+
+  nub_loop_dispose(&loop);
+  iter = ITER;
+
+  return 0;
+}

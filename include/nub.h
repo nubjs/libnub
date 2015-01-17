@@ -31,7 +31,7 @@ typedef struct nub_loop_s nub_loop_t;
 typedef struct nub_thread_s nub_thread_t;
 typedef struct nub_work_s nub_work_t;
 
-typedef void (*nub_loop_cb)(void* arg);
+typedef void (*nub_complete_cb)(nub_work_t* work, int status);
 typedef void (*nub_thread_disposed_cb)(nub_thread_t* thread);
 typedef void (*nub_work_cb)(nub_thread_t* thread, void* arg);
 
@@ -44,16 +44,37 @@ struct nub_loop_s {
   uv_loop_t uvloop;
 
   /* private */
-  uv_prepare_t async_runner_;   /* Runs async queue before idling */
-  uv_mutex_t async_mutex_;      /* Threads will need to use a mutex to add
-                                   items to the queue */
-  fuq_queue_t async_queue_;     /* Holds entries from loop_block to run in the
-                                   prepare cb */
-  uv_sem_t blocker_sem_;        /* Block while thread operates on the eloop */
-  volatile unsigned int ref_;   /* Nuber of threads attached to this loop */
+  uv_sem_t loop_lock_sem_;
+
+  uv_prepare_t queue_processor_;
+  uv_mutex_t queue_processor_lock_;
+  fuq_queue_t blocking_queue_;
+
   uv_async_t* thread_dispose_;  /* Used to dispose of threads */
-  fuq_queue_t thread_dispose_queue_;
   uv_mutex_t thread_dispose_lock_;
+  fuq_queue_t thread_dispose_queue_;
+  volatile unsigned int ref_;   /* Nuber of threads attached to this loop */
+
+  fuq_queue_t work_queue_;
+  uv_mutex_t work_lock_;
+};
+
+
+typedef enum {
+  NUB_LOOP_QUEUE_NONE,
+  NUB_LOOP_QUEUE_LOCK,
+  NUB_LOOP_QUEUE_DISPOSE,
+  NUB_LOOP_QUEUE_WORK
+} uv_work_types;
+
+
+/* Will be used bi-directionally once the event loop accepts dispatch queues. */
+struct nub_work_s {
+  void* arg;
+  nub_work_cb cb;
+  nub_thread_t* thread;
+  nub_complete_cb complete_cb;
+  uv_work_types work_type;
 };
 
 
@@ -68,20 +89,15 @@ struct nub_thread_s {
 
   /* private */
   fuq_queue_t incoming_;
-  uv_sem_t blocker_sem_;
+  uv_sem_t thread_lock_sem_;
   /* Must be separately allocated so the handle can be closed after the thread
    * is gone. Used in an internal uv_async_send() call to signal the event loop
    * a thread has work to do. */
   uv_async_t* async_signal_;
   uv_sem_t sem_wait_;
   nub_thread_disposed_cb disposed_cb_;
-};
 
-
-/* Will be used bi-directionally once the event loop accepts dispatch queues. */
-struct nub_work_s {
-  void* arg;
-  nub_work_cb cb;
+  nub_work_t work;
 };
 
 
@@ -128,6 +144,18 @@ NUB_EXTERN int nub_loop_lock(nub_thread_t* thread);
  * Should be run at the end of any event loop critical section.
  */
 NUB_EXTERN void nub_loop_unlock(nub_thread_t* thread);
+
+
+/**
+ * Enqueue work to be done by the event loop thread. The work callback
+ * will be run asyncronously and the completion callback will be
+ * ennqueued immediately after the work is done.
+ *
+ * Should only be run from a spawned thread.
+ */
+NUB_EXTERN void nub_loop_enqueue(nub_thread_t* thread,
+                                 nub_work_t* work,
+                                 nub_complete_cb cb);
 
 
 /**
