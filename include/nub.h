@@ -120,7 +120,7 @@ NUB_EXTERN void nub_loop_dispose(nub_loop_t* loop);
  *
  * Return value is the same as uv_async_send().
  */
-NUB_EXTERN int nub_loop_block(nub_thread_t* thread);
+NUB_EXTERN int nub_loop_lock(nub_thread_t* thread);
 
 
 /**
@@ -128,7 +128,7 @@ NUB_EXTERN int nub_loop_block(nub_thread_t* thread);
  *
  * Should be run at the end of any event loop critical section.
  */
-NUB_EXTERN void nub_loop_resume(nub_thread_t* thread);
+NUB_EXTERN void nub_loop_unlock(nub_thread_t* thread);
 
 
 /**

@@ -13,9 +13,9 @@ static void thread_call(nub_thread_t* thread, void* arg) {
     return nub_thread_dispose(thread, NULL);
 
   /* Block event loop long enough to queue up running this function again. */
-  nub_loop_block(thread);
+  nub_loop_lock(thread);
   nub_thread_enqueue(thread, (nub_work_t*) arg);
-  nub_loop_resume(thread);
+  nub_loop_unlock(thread);
 }
 
 

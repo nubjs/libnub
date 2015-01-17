@@ -110,7 +110,7 @@ void nub_loop_dispose(nub_loop_t* loop) {
 
 
 /* Should be run from spawned thread. */
-int nub_loop_block(nub_thread_t* thread) {
+int nub_loop_lock(nub_thread_t* thread) {
   uv_mutex_t* mutex = &thread->nubloop->async_mutex_;
   fuq_queue_t* queue = &thread->nubloop->async_queue_;
   int er;
@@ -135,6 +135,6 @@ int nub_loop_block(nub_thread_t* thread) {
 }
 
 
-void nub_loop_resume(nub_thread_t* thread) {
+void nub_loop_unlock(nub_thread_t* thread) {
   uv_sem_post(&thread->nubloop->blocker_sem_);
 }

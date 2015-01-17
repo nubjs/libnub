@@ -20,7 +20,7 @@ typedef struct {
 static void create_timer_cb(nub_thread_t* thread, void* arg) {
   timer_work* t_work = (timer_work*) arg;
 
-  nub_loop_block(thread);
+  nub_loop_lock(thread);
 
   ASSERT(uv_timer_init(&thread->nubloop->uvloop, &t_work->uvtimer) == 0);
   ASSERT(uv_timer_start(&t_work->uvtimer,
@@ -28,7 +28,7 @@ static void create_timer_cb(nub_thread_t* thread, void* arg) {
                         t_work->timeout,
                         t_work->repeat) == 0);
 
-  nub_loop_resume(thread);
+  nub_loop_unlock(thread);
 }
 
 
@@ -36,7 +36,7 @@ static void create_timer_cb(nub_thread_t* thread, void* arg) {
 static void create_timer_dispose_cb(nub_thread_t* thread, void* arg) {
   timer_work* t_work = (timer_work*) arg;
 
-  nub_loop_block(thread);
+  nub_loop_lock(thread);
 
   ASSERT(uv_timer_init(&thread->nubloop->uvloop, &t_work->uvtimer) == 0);
   ASSERT(uv_timer_start(&t_work->uvtimer,
@@ -44,7 +44,7 @@ static void create_timer_dispose_cb(nub_thread_t* thread, void* arg) {
                         t_work->timeout,
                         t_work->repeat) == 0);
 
-  nub_loop_resume(thread);
+  nub_loop_unlock(thread);
   nub_thread_dispose(thread, NULL);
 }
 
@@ -168,7 +168,7 @@ static void thread_multi_timer_dispose_cb(nub_thread_t* thread, void* arg) {
 
   cntr += 1;
 
-  nub_loop_block(thread);
+  nub_loop_lock(thread);
 
   ASSERT(uv_timer_init(&thread->nubloop->uvloop, &t_work->uvtimer) == 0);
   ASSERT(uv_timer_start(&t_work->uvtimer,
@@ -176,7 +176,7 @@ static void thread_multi_timer_dispose_cb(nub_thread_t* thread, void* arg) {
                         t_work->timeout,
                         t_work->repeat) == 0);
 
-  nub_loop_resume(thread);
+  nub_loop_unlock(thread);
 
   if (0 == cntr % 2)
     nub_thread_dispose(thread, NULL);
@@ -412,7 +412,7 @@ static void multi_all_dispose_cb(nub_thread_t* thread, void* arg) {
 
   *t_work->shared_cntr += 1;
 
-  nub_loop_block(thread);
+  nub_loop_lock(thread);
 
   ASSERT(uv_timer_init(&thread->nubloop->uvloop, &t_work->uvtimer) == 0);
   ASSERT(uv_timer_start(&t_work->uvtimer,
@@ -420,7 +420,7 @@ static void multi_all_dispose_cb(nub_thread_t* thread, void* arg) {
                         t_work->timeout,
                         t_work->repeat) == 0);
 
-  nub_loop_resume(thread);
+  nub_loop_unlock(thread);
 
   if (0 == *t_work->shared_cntr % 2)
     nub_thread_dispose(thread, NULL);
