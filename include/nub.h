@@ -74,7 +74,6 @@ struct nub_thread_s {
    * a thread has work to do. */
   uv_async_t* async_signal_;
   uv_sem_t sem_wait_;
-  volatile int processing_;
   nub_thread_disposed_cb disposed_cb_;
 };
 
