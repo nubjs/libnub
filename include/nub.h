@@ -37,11 +37,11 @@ typedef void (*nub_work_cb)(nub_thread_t* thread, void* arg);
 
 
 struct nub_loop_s {
+  /* read-only */
+  uv_loop_t uvloop;  /* Must come first */
+
   /* public */
   void* data;  /* User storage */
-
-  /* read-only */
-  uv_loop_t uvloop;
 
   /* private */
   uv_sem_t loop_lock_sem_;
@@ -79,13 +79,13 @@ struct nub_work_s {
 
 
 struct nub_thread_s {
+  /* read-only */
+  uv_thread_t uvthread;  /* must come first */
+  nub_loop_t* nubloop;
+  volatile int disposed;
+
   /* public */
   void* data;
-
-  /* read-only */
-  nub_loop_t* nubloop;
-  uv_thread_t uvthread;
-  volatile int disposed;
 
   /* private */
   fuq_queue_t incoming_;
