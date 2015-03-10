@@ -95,7 +95,14 @@ BENCHMARK_IMPL(oscillate_multi) {
 }
 
 
-void enqueue_call(nub_thread_t* thread, void* arg) {
+void enqueue_noop(nub_thread_t* thread, void* arg) {
+  intptr_t d = (intptr_t) thread->data;
+  d++;
+  thread->data = (void*) d;
+}
+
+
+void enqueue_dispose(nub_thread_t* thread, void* arg) {
   nub_thread_dispose(thread, NULL);
 }
 
@@ -103,20 +110,28 @@ void enqueue_call(nub_thread_t* thread, void* arg) {
 BENCHMARK_IMPL(enqueue_work) {
   nub_loop_t loop;
   nub_thread_t thread;
-  nub_work_t work;
+  nub_work_t work_noop;
+  nub_work_t work_dispose;
   uint64_t time;
 
   iter = ITER;
 
-  nub_work_init(&work, enqueue_call, &work);
+  nub_work_init(&work_noop, enqueue_noop, &work_noop);
+  nub_work_init(&work_dispose, enqueue_dispose, &work_dispose);
   nub_loop_init(&loop);
   ASSERT(nub_thread_create(&loop, &thread) == 0);
 
+  thread.data = 0x0;
+
   time = uv_hrtime();
 
-  nub_thread_enqueue(&thread, &work);
+  for (size_t i = 0; i < ITER; i++) {
+    nub_thread_enqueue(&thread, &work_noop);
+  }
+  nub_thread_enqueue(&thread, &work_dispose);
 
   ASSERT(nub_loop_run(&loop, UV_RUN_DEFAULT) == 0);
+  ASSERT(ITER == (intptr_t) thread.data);
 
   time = uv_hrtime() - time;
   fprintf(stderr, "enqueue_work:  %Lf/sec\n", ITER / (time / 1e9));
