@@ -17,7 +17,7 @@ typedef struct {
 
 
 /* Runs from the spawned thread. */
-static void create_timer_cb(nub_thread_t* thread, void* arg) {
+static void create_timer_cb(nub_thread_t* thread, nub_work_t* work, void* arg) {
   timer_work* t_work = (timer_work*) arg;
 
   nub_loop_lock(thread);
@@ -33,7 +33,9 @@ static void create_timer_cb(nub_thread_t* thread, void* arg) {
 
 
 /* Runs from the spawned thread. */
-static void create_timer_dispose_cb(nub_thread_t* thread, void* arg) {
+static void create_timer_dispose_cb(nub_thread_t* thread,
+                                    nub_work_t* work,
+                                    void* arg) {
   timer_work* t_work = (timer_work*) arg;
 
   nub_loop_lock(thread);
@@ -162,7 +164,9 @@ static void multi_timer_cb(uv_timer_t* handle) {
 
 
 /* Runs from the spawned thread. */
-static void thread_multi_timer_dispose_cb(nub_thread_t* thread, void* arg) {
+static void thread_multi_timer_dispose_cb(nub_thread_t* thread,
+                                          nub_work_t* work,
+                                          void* arg) {
   static int cntr = 0;
   timer_work* t_work = (timer_work*) arg;
 
@@ -407,7 +411,9 @@ static void multi_timer_multi_thread_cb(uv_timer_t* handle) {
 }
 
 
-static void multi_all_dispose_cb(nub_thread_t* thread, void* arg) {
+static void multi_all_dispose_cb(nub_thread_t* thread,
+                                 nub_work_t* work,
+                                 void* arg) {
   timer_work* t_work = (timer_work*) arg;
 
   *t_work->shared_cntr += 1;

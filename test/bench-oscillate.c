@@ -8,7 +8,7 @@
 static int iter;
 
 
-static void thread_call(nub_thread_t* thread, void* arg) {
+static void thread_call(nub_thread_t* thread, nub_work_t* work, void* arg) {
   if (0 >= --iter)
     return nub_thread_dispose(thread, NULL);
 
@@ -95,14 +95,14 @@ BENCHMARK_IMPL(oscillate_multi) {
 }
 
 
-void enqueue_noop(nub_thread_t* thread, void* arg) {
+void enqueue_noop(nub_thread_t* thread, nub_work_t* work, void* arg) {
   intptr_t d = (intptr_t) thread->data;
   d++;
   thread->data = (void*) d;
 }
 
 
-void enqueue_dispose(nub_thread_t* thread, void* arg) {
+void enqueue_dispose(nub_thread_t* thread, nub_work_t* work, void* arg) {
   nub_thread_dispose(thread, NULL);
 }
 

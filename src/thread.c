@@ -35,7 +35,7 @@ static void nub__thread_entry_cb(void* arg) {
   for (;;) {
     while (!fuq_empty(queue)) {
       item = (nub_work_t*) fuq_dequeue(queue);
-      (item->cb)(thread, item->arg);
+      (item->cb)(thread, item, item->arg);
     }
     if (0 < thread->disposed)
       break;

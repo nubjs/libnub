@@ -33,7 +33,7 @@ typedef struct nub_work_s nub_work_t;
 
 typedef void (*nub_complete_cb)(nub_work_t* work, int status);
 typedef void (*nub_thread_disposed_cb)(nub_thread_t* thread);
-typedef void (*nub_work_cb)(nub_thread_t* thread, void* arg);
+typedef void (*nub_work_cb)(nub_thread_t* thread, nub_work_t* work, void* arg);
 
 
 struct nub_loop_s {
@@ -70,6 +70,10 @@ typedef enum {
 
 /* Will be used bi-directionally once the event loop accepts dispatch queues. */
 struct nub_work_s {
+  /* public */
+  void* data;
+
+  /* private */
   void* arg;
   nub_work_cb cb;
   nub_thread_t* thread;

@@ -26,7 +26,7 @@ static void nub__async_prepare_cb(uv_prepare_t* handle) {
       uv_sem_post(&thread->thread_lock_sem_);
       uv_sem_wait(&loop->loop_lock_sem_);
     } else if (NUB_LOOP_QUEUE_WORK == work->work_type) {
-      work->cb(thread, work->arg);
+      work->cb(thread, work, work->arg);
       /* TODO(trevnorris): Still need to implement returning status. */
     } else {
       UNREACHABLE();
