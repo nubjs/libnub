@@ -41,6 +41,10 @@ static void nub__thread_dispose(uv_async_t* handle) {
   nub_thread_t* thread;
 
   loop = (nub_loop_t*) handle->data;
+
+  if (!loop->disposed_)
+    return;
+
   queue = &loop->thread_dispose_queue_;
   while (!fuq_empty(queue)) {
     thread = (nub_thread_t*) fuq_dequeue(queue);
@@ -87,10 +91,11 @@ void nub_loop_init(nub_loop_t* loop) {
   er = uv_async_init(&loop->uvloop, async_handle, nub__thread_dispose);
   ASSERT(0 == er);
   async_handle->data = loop;
-  loop->thread_dispose_ = async_handle;
-  uv_unref((uv_handle_t*) loop->thread_dispose_);
+  loop->work_ping_ = async_handle;
+  uv_unref((uv_handle_t*) loop->work_ping_);
 
   loop->ref_ = 0;
+  loop->disposed_ = 0;
 
   er = uv_prepare_start(&loop->queue_processor_, nub__async_prepare_cb);
   ASSERT(0 == er);
@@ -106,13 +111,13 @@ void nub_loop_dispose(nub_loop_t* loop) {
   ASSERT(0 == uv_loop_alive(&loop->uvloop));
   ASSERT(1 == fuq_empty(&loop->blocking_queue_));
   ASSERT(0 == loop->ref_);
-  ASSERT(NULL != loop->thread_dispose_);
-  ASSERT(0 == uv_has_ref((uv_handle_t*) loop->thread_dispose_));
+  ASSERT(NULL != loop->work_ping_);
+  ASSERT(0 == uv_has_ref((uv_handle_t*) loop->work_ping_));
   ASSERT(1 == fuq_empty(&loop->thread_dispose_queue_));
 
-  uv_close((uv_handle_t*) loop->thread_dispose_, nub__free_handle_cb);
+  uv_close((uv_handle_t*) loop->work_ping_, nub__free_handle_cb);
   uv_close((uv_handle_t*) &loop->queue_processor_, NULL);
-  ASSERT(0 == uv_is_active((uv_handle_t*) loop->thread_dispose_));
+  ASSERT(0 == uv_is_active((uv_handle_t*) loop->work_ping_));
 
   fuq_dispose(&loop->thread_dispose_queue_);
   uv_mutex_destroy(&loop->thread_dispose_lock_);
@@ -182,11 +187,5 @@ void nub_loop_enqueue(nub_thread_t* thread,
   uv_mutex_lock(&loop->work_lock_);
   fuq_enqueue(&loop->work_queue_, work);
   uv_mutex_unlock(&loop->work_lock_);
-
-  /* TODO(trevnorris): Enqueue work onto the loop's queue then notify the
-   * event loop that there is work to be done.
-   *
-   * There should be a single mechanism that notifies the event loop when
-   * additional work needs to get done. i.e. the loop work queue should be
-   * combined with the blocking queue and the thread dispose queue. */
+  uv_async_send(thread->nubloop->work_ping_);
 }

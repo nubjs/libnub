@@ -50,13 +50,14 @@ struct nub_loop_s {
   uv_mutex_t queue_processor_lock_;
   fuq_queue_t blocking_queue_;
 
-  uv_async_t* thread_dispose_;  /* Used to dispose of threads */
   uv_mutex_t thread_dispose_lock_;
   fuq_queue_t thread_dispose_queue_;
   volatile unsigned int ref_;   /* Nuber of threads attached to this loop */
 
   fuq_queue_t work_queue_;
   uv_mutex_t work_lock_;
+  uv_async_t* work_ping_;
+  volatile int disposed_;
 };
 
 

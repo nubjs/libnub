@@ -81,10 +81,11 @@ int nub_thread_create(nub_loop_t* loop, nub_thread_t* thread) {
 void nub_thread_dispose(nub_thread_t* thread, nub_thread_disposed_cb cb) {
   thread->disposed = 1;
   thread->disposed_cb_ = cb;
+  thread->nubloop->disposed_ = 1;
   uv_mutex_lock(&thread->nubloop->thread_dispose_lock_);
   fuq_enqueue(&thread->nubloop->thread_dispose_queue_, thread);
   uv_mutex_unlock(&thread->nubloop->thread_dispose_lock_);
-  uv_async_send(thread->nubloop->thread_dispose_);
+  uv_async_send(thread->nubloop->work_ping_);
 }
 
 
